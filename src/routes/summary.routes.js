@@ -1,13 +1,13 @@
-import express from 'express';
-import { verifyToken } from '../middleware/verifyToken.js';
-import { createSummary } from '../controllers/summary.controller.js';
+const express = require('express');
+const { verifyToken } = require('../utils/middleware');
+const { createSummary } = require('../controllers/summary.controller');
 
-const router = express.Router();
+const summaryRouter = express.Router();
 
 // Protected routes (require authentication)
-router.use(verifyToken);
+summaryRouter.use(verifyToken);
 
 // POST /api/summary - Create a new meeting summary
-router.post('/', createSummary);
+summaryRouter.post('/', createSummary);
 
-export default router;
+module.exports = summaryRouter;

@@ -1,8 +1,8 @@
-import { query } from '../utils/db.js';
+const { query, getClient } = require('../utils/config');
 
-export const logCreditTransaction = async (req, res) => {
+const logCreditTransaction = async (req, res) => {
   const client = await getClient();
-  
+
   try {
     const userId = req.user.id;
     const { credits, description, type = 'other' } = req.body;
@@ -31,7 +31,7 @@ export const logCreditTransaction = async (req, res) => {
       FROM credit_transactions 
       WHERE user_id = $1
     `;
-    
+
     const balanceResult = await client.query(balanceQuery, [userId]);
     const currentBalance = parseFloat(balanceResult.rows[0].balance) || 0;
     const newBalance = currentBalance + creditsValue;
@@ -54,7 +54,7 @@ export const logCreditTransaction = async (req, res) => {
       VALUES ($1, $2, $3, $4, $5)
       RETURNING id, created_at, credits, description, type, balance_after
     `;
-    
+
     const result = await client.query(logTransactionQuery, [
       userId,
       creditsValue,
@@ -62,9 +62,9 @@ export const logCreditTransaction = async (req, res) => {
       type,
       newBalance
     ]);
-    
+
     await client.query('COMMIT');
-    
+
     res.status(201).json({
       success: true,
       data: {
@@ -72,7 +72,7 @@ export const logCreditTransaction = async (req, res) => {
         newBalance
       }
     });
-    
+
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error logging credit transaction:', error);
@@ -86,8 +86,7 @@ export const logCreditTransaction = async (req, res) => {
   }
 };
 
-// Get credit balance for a user
-export const getCreditBalance = async (userId) => {
+const getCreditBalance = async (userId) => {
   try {
     const queryText = `
       SELECT COALESCE(SUM(credits), 0) as balance 
@@ -100,4 +99,9 @@ export const getCreditBalance = async (userId) => {
     console.error('Error getting credit balance:', error);
     throw error;
   }
+};
+
+module.exports = {
+  logCreditTransaction,
+  getCreditBalance
 };
