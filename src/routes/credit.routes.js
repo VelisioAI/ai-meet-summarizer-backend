@@ -1,13 +1,10 @@
-import express from 'express';
-import { verifyToken } from '../utils/middleware.js';
-import { logCreditTransaction } from '../controllers/credit.controller.js';
+const express = require('express');
+const { verifyToken } = require('../utils/middleware');
+const { logCreditTransaction } = require('../controllers/credit.controller');
 
-const creditsRouter = express.Router();
+const router = express.Router();
 
-// Protected routes (require authentication)
-creditsRouter.use(verifyToken);
+router.use(verifyToken);
+router.post('/', logCreditTransaction);
 
-// POST /api/credit-log - Log a credit transaction
-creditsRouter.post('/', logCreditTransaction);
-
-module.exports = creditsRouter;
+module.exports = router;

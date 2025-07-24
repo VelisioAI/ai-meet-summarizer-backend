@@ -1,16 +1,11 @@
 const express = require('express');
 const { verifyToken } = require('../utils/middleware');
-const { getUserProfile, getUserHistory } = require('../controllers/user.controller');
+const { getUserProfile, getUserHistory, syncUser } = require('../controllers/user.controller');
 
-const usersRouter = express.Router();
+const router = express.Router();
 
-// Protected routes (require authentication)
-usersRouter.use(verifyToken);
+router.get('/', verifyToken, getUserProfile);
+router.get('/history', verifyToken, getUserHistory);
+router.post('/sync', syncUser); // Public route for user synchronization
 
-// GET /api/user - Get user profile
-usersRouter.get('/', getUserProfile);
-
-// GET /api/user/history - Get user's summary history
-usersRouter.get('/history', getUserHistory);
-
-module.exports = usersRouter;
+module.exports = router;

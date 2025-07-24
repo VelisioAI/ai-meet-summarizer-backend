@@ -40,16 +40,17 @@ const verifyToken = async (req, res, next) => {
     }
 
     const token = authHeader.split(' ')[1];
-
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const supabaseId = decoded.sub; // Supabase user ID
 
-    const userQuery = 'SELECT * FROM users WHERE id = $1';
-    const result = await query(userQuery, [decoded.userId]);
+    // Find user by supabase_id
+    const userQuery = 'SELECT * FROM users WHERE supabase_id = $1';
+    const result = await query(userQuery, [supabaseId]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'User not found'
+        message: 'User not found in database'
       });
     }
 

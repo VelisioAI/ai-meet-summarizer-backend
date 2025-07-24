@@ -5,71 +5,70 @@ const logCreditTransaction = async (req, res) => {
 
   try {
     const userId = req.user.id;
-    const { credits, description, type = 'other' } = req.body;
+    const { change, reason, type = 'other' } = req.body;
 
     // Validate input
-    if (credits === undefined || !description) {
+    if (change === undefined || !reason) {
       return res.status(400).json({
         success: false,
-        message: 'Credits and description are required'
+        message: 'Change and reason are required'
       });
     }
 
-    const creditsValue = parseFloat(credits);
-    if (isNaN(creditsValue)) {
+    const changeValue = parseInt(change, 10);
+    if (isNaN(changeValue)) {
       return res.status(400).json({
         success: false,
-        message: 'Credits must be a valid number'
+        message: 'Change must be a valid integer'
       });
     }
 
     await client.query('BEGIN');
 
     // Get current balance
-    const balanceQuery = `
-      SELECT COALESCE(SUM(credits), 0) as balance 
-      FROM credit_transactions 
-      WHERE user_id = $1
-    `;
+    const userQuery = 'SELECT credits FROM users WHERE id = $1 FOR UPDATE';
+    const userResult = await client.query(userQuery, [userId]);
+    if (userResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
 
-    const balanceResult = await client.query(balanceQuery, [userId]);
-    const currentBalance = parseFloat(balanceResult.rows[0].balance) || 0;
-    const newBalance = currentBalance + creditsValue;
+    const currentCredits = userResult.rows[0].credits;
+    const newCredits = currentCredits + changeValue;
 
     // Prevent negative balance unless it's an admin operation
-    if (newBalance < 0 && type !== 'admin_adjustment') {
+    if (newCredits < 0 && type !== 'admin_adjustment') {
       await client.query('ROLLBACK');
       return res.status(400).json({
         success: false,
         message: 'Insufficient credits',
-        currentBalance,
-        requiredCredits: Math.abs(creditsValue)
+        currentCredits,
+        requiredChange: -changeValue
       });
     }
 
+    // Update user's credits
+    const updateUserQuery = 'UPDATE users SET credits = $1 WHERE id = $2';
+    await client.query(updateUserQuery, [newCredits, userId]);
+
     // Log the transaction
-    const logTransactionQuery = `
-      INSERT INTO credit_transactions 
-        (user_id, credits, description, type, balance_after)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING id, created_at, credits, description, type, balance_after
+    const logQuery = `
+      INSERT INTO credit_logs (user_id, change, reason)
+      VALUES ($1, $2, $3)
+      RETURNING *
     `;
 
-    const result = await client.query(logTransactionQuery, [
-      userId,
-      creditsValue,
-      description,
-      type,
-      newBalance
-    ]);
-
+    const logResult = await client.query(logQuery, [userId, changeValue, reason]);
     await client.query('COMMIT');
 
     res.status(201).json({
       success: true,
       data: {
-        transaction: result.rows[0],
-        newBalance
+        log: logResult.rows[0],
+        newCredits
       }
     });
 
@@ -88,13 +87,9 @@ const logCreditTransaction = async (req, res) => {
 
 const getCreditBalance = async (userId) => {
   try {
-    const queryText = `
-      SELECT COALESCE(SUM(credits), 0) as balance 
-      FROM credit_transactions 
-      WHERE user_id = $1
-    `;
+    const queryText = 'SELECT credits FROM users WHERE id = $1';
     const result = await query(queryText, [userId]);
-    return parseFloat(result.rows[0].balance) || 0;
+    return result.rows[0].credits || 0;
   } catch (error) {
     console.error('Error getting credit balance:', error);
     throw error;

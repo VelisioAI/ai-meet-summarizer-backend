@@ -11,8 +11,11 @@ const pool = new Pool({
   user: process.env.SUPABASE_DB_USER,
   password: process.env.SUPABASE_DB_PASSWORD,
   ssl: {
-    rejectUnauthorized: false // For development only; use strict SSL in production
-  }
+    rejectUnauthorized: false // For development only
+  },
+  max: 20, // Set connection pool size
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
 });
 
 const connectDB = async () => {

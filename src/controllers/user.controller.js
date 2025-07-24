@@ -4,9 +4,8 @@ const getUserProfile = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // Get user profile from database
     const userQuery = `
-      SELECT id, email, full_name, created_at, updated_at 
+      SELECT id, name, email, credits, created_at, updated_at 
       FROM users 
       WHERE id = $1
     `;
@@ -20,24 +19,9 @@ const getUserProfile = async (req, res) => {
       });
     }
 
-    const user = result.rows[0];
-
-    // Get user's credit balance
-    const creditQuery = `
-      SELECT COALESCE(SUM(credits), 0) as balance 
-      FROM credit_transactions 
-      WHERE user_id = $1
-    `;
-
-    const creditResult = await query(creditQuery, [userId]);
-    const credits = parseFloat(creditResult.rows[0].balance) || 0;
-
     res.status(200).json({
       success: true,
-      data: {
-        ...user,
-        credits
-      }
+      data: result.rows[0]
     });
 
   } catch (error) {
@@ -55,19 +39,20 @@ const getUserHistory = async (req, res) => {
     const userId = req.user.id;
     const { limit = 10, offset = 0 } = req.query;
 
-    // Get user's summary history with pagination
     const historyQuery = `
-      SELECT id, title, summary, transcript, created_at, updated_at
-      FROM meeting_summaries
+      SELECT 
+        id, title, summary_status,
+        created_at, 
+        (summary_text IS NOT NULL AND summary_text != '') as has_summary
+      FROM summaries
       WHERE user_id = $1
       ORDER BY created_at DESC
       LIMIT $2 OFFSET $3
     `;
 
-    // Get total count for pagination
     const countQuery = `
       SELECT COUNT(*) as total 
-      FROM meeting_summaries 
+      FROM summaries 
       WHERE user_id = $1
     `;
 
@@ -102,7 +87,10 @@ const getUserHistory = async (req, res) => {
   }
 };
 
+// ... syncUser remains the same ...
+
 module.exports = {
   getUserProfile,
-  getUserHistory
+  getUserHistory,
+  syncUser
 };
