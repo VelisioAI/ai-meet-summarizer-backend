@@ -1,16 +1,14 @@
-const { Configuration, OpenAIApi } = require("openai");
-const logger = require('../utils/logger');
+import OpenAI from "openai";
+import logger from '../utils/logger.js';
 
-// Initialize OpenAI client
-const configuration = new Configuration({
+const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
-const openai = new OpenAIApi(configuration);
 
-const generateSummary = async (summaryId, transcript, customPrompt = null) => {
+export const generateSummary = async (summaryId, transcript, customPrompt = null) => {
   try {
     logger.info(`Generating summary for ${summaryId}...`);
-    
+
     // Prepare prompt
     let prompt;
     if (customPrompt) {
@@ -21,11 +19,11 @@ Include key decisions, action items, and important discussion points.
 Format the summary with clear sections using markdown.
 
 Transcript:
-${transcript.substring(0, 15000)}`; // Limit to 15k chars
+${transcript.substring(0, 15000)}`;
     }
 
-    const response = await openai.createChatCompletion({
-      model: "gpt-3.5-turbo-16k",
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
       messages: [
         {
           role: "system",
@@ -40,15 +38,12 @@ ${transcript.substring(0, 15000)}`; // Limit to 15k chars
       max_tokens: 2000
     });
 
-    const summary = response.data.choices[0].message.content;
+    const summary = response.choices[0].message.content;
     logger.info(`Summary generated for ${summaryId}`);
     return summary;
-  } catch (error) {
-    logger.error('OpenAI API error:', error.response ? error.response.data : error.message);
-    throw new Error('Failed to generate summary: ' + (error.response?.data?.error?.message || error.message));
-  }
-};
 
-module.exports = {
-  generateSummary
+  } catch (error) {
+    logger.error('OpenAI API error:', error);
+    throw new Error('Failed to generate summary: ' + error.message);
+  }
 };
