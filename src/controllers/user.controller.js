@@ -87,7 +87,40 @@ const getUserHistory = async (req, res) => {
   }
 };
 
-// ... syncUser remains the same ...
+const syncUser = async (req, res) => {
+  try {
+    const { id: supabase_id, email, name } = req.body;
+
+    if (!supabase_id || !email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Supabase ID and email are required'
+      });
+    }
+
+    const queryText = `
+      INSERT INTO users (supabase_id, email, name)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (supabase_id) DO UPDATE
+      SET email = EXCLUDED.email, name = EXCLUDED.name
+      RETURNING *
+    `;
+
+    const result = await query(queryText, [supabase_id, email, name || '']);
+
+    res.status(200).json({
+      success: true,
+      user: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error syncing user:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error syncing user',
+      error: process.env.NODE_ENV === 'development' ? error.message : {}
+    });
+  }
+};
 
 module.exports = {
   getUserProfile,
