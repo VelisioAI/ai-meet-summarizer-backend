@@ -1,11 +1,23 @@
-import OpenAI from "openai";
-import logger from '../utils/logger.js';
+const OpenAI = require('openai');
+const logger = require('../utils/logger');
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+let openai;
 
-export const generateSummary = async (summaryId, transcript, customPrompt = null) => {
+// Initialize OpenAI client only when needed
+function getOpenAIClient() {
+  if (!openai) {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY environment variable is not set');
+    }
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+  return openai;
+}
+
+const generateSummary = async (summaryId, transcript, customPrompt = null) => {
+  const openai = getOpenAIClient();
   try {
     logger.info(`Generating summary for ${summaryId}...`);
 
@@ -23,7 +35,7 @@ ${transcript.substring(0, 15000)}`;
     }
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4",
       messages: [
         {
           role: "system",
@@ -47,3 +59,5 @@ ${transcript.substring(0, 15000)}`;
     throw new Error('Failed to generate summary: ' + error.message);
   }
 };
+
+module.exports = { generateSummary };

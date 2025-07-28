@@ -28,24 +28,38 @@ const errorHandler = (error, req, res, next) => {
   next(error);
 };
 
+/**
+ * Middleware to verify JWT token and attach user to request
+ * Expects token in Authorization header as: Bearer <token>
+ */
 const verifyToken = async (req, res, next) => {
-  try {
-    const authHeader = req.headers.authorization;
+  // Get token from Authorization header
+  const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({
+      success: false,
+      message: 'No token provided. Please authenticate.'
+    });
+  }
+
+  const token = authHeader.split(' ')[1];
+  
+  try {
+    // Verify the token using our JWT secret
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // The token should have userId and email (as set in handleAuth)
+    if (!decoded.userId || !decoded.email) {
       return res.status(401).json({
         success: false,
-        message: 'No token provided'
+        message: 'Invalid token structure'
       });
     }
-
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const supabaseId = decoded.sub; // Supabase user ID
-
-    // Find user by supabase_id
-    const userQuery = 'SELECT * FROM users WHERE supabase_id = $1';
-    const result = await query(userQuery, [supabaseId]);
+    
+    // Find user by ID from our database
+    const userQuery = 'SELECT * FROM users WHERE id = $1';
+    const result = await query(userQuery, [decoded.userId]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -54,6 +68,7 @@ const verifyToken = async (req, res, next) => {
       });
     }
 
+    // Attach user to request object
     req.user = result.rows[0];
     next();
   } catch (error) {
@@ -69,13 +84,15 @@ const verifyToken = async (req, res, next) => {
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({
         success: false,
-        message: 'Token expired'
+        message: 'Token expired. Please log in again.'
       });
     }
 
+    // Handle other errors
     res.status(500).json({
       success: false,
-      message: 'Server error during authentication'
+      message: 'Server error during authentication',
+      error: process.env.NODE_ENV === 'development' ? error.message : {}
     });
   }
 };
