@@ -37,7 +37,7 @@ const createSummary = async (req, res) => {
     }
 
     const transcript = transcriptResult.rows[0];
-    const cost = 2; // Additional cost for custom summary
+    const cost = 1; // 1 credit per summary (simplified)
 
     // Check user credits
     const currentCredits = await getCreditBalance(userId);
@@ -83,7 +83,7 @@ const createSummary = async (req, res) => {
     await client.query(
       `INSERT INTO credit_logs (user_id, change, reason)
        VALUES ($1, $2, $3)`,
-      [userId, -cost, `Custom summary for transcript ${transcript_id}`]
+      [userId, -cost, `AI summary generation for transcript ${transcript_id}`]
     );
 
     await client.query('COMMIT');
