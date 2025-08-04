@@ -287,9 +287,10 @@ const handleAuth = async (req, res) => {
 const getDashboardData = async (req, res) => {
   const userId = req.user.userId;
   const summaryLimit = 5; // Number of recent summaries to return
+  let client;
 
   try {
-    const client = await getClient();
+    client = await getClient();
 
     // Get user profile
     const userResult = await client.query(
@@ -298,6 +299,7 @@ const getDashboardData = async (req, res) => {
     );
 
     if (userResult.rows.length === 0) {
+      client.release();
       return res.status(404).json({
         success: false,
         message: 'User not found'
@@ -316,25 +318,29 @@ const getDashboardData = async (req, res) => {
       [userId, summaryLimit]
     );
 
-    // Get recent credit transactions
-    const creditsResult = await client.query(
-      `SELECT change, reason, timestamp 
-       FROM credit_logs 
-       WHERE user_id = $1 
-       ORDER BY timestamp DESC 
-       LIMIT 5`,
-      [userId]
-    );
+    // Temporarily comment out credit logs queries
+    // const creditsResult = await client.query(
+    //   `SELECT change, reason, "timestamp" 
+    //    FROM credit_logs 
+    //    WHERE user_id = $1 
+    //    ORDER BY "timestamp" DESC 
+    //    LIMIT 5`,
+    //   [userId]
+    // );
+    
+    // console.log('Credit logs query result:', creditsResult.rows);
 
-    // Calculate total credits used (sum of negative changes)
-    const creditsUsedResult = await client.query(
-      `SELECT COALESCE(SUM(-change), 0) as total_used 
-       FROM credit_logs 
-       WHERE user_id = $1 AND change < 0`,
-      [userId]
-    );
+    // // Calculate total credits used (sum of negative changes)
+    // const creditsUsedResult = await client.query(
+    //   `SELECT COALESCE(SUM(-change), 0) as total_used 
+    //    FROM credit_logs 
+    //    WHERE user_id = $1 AND change < 0`,
+    //   [userId]
+    // );
+    // console.log('Credits used result:', creditsUsedResult.rows[0]);
 
-    res.status(200).json({
+    // Prepare response data without credit logs for now
+    const responseData = {
       success: true,
       data: {
         user: {
@@ -347,26 +353,28 @@ const getDashboardData = async (req, res) => {
         recentSummaries: summariesResult.rows.map(s => ({
           id: s.id,
           title: s.title,
-          date: s.created_at
+          createdAt: s.created_at
         })),
-        creditStats: {
-          currentBalance: user.credits,
-          totalUsed: Number(creditsUsedResult.rows[0].total_used),
-          recentTransactions: creditsResult.rows.map(t => ({
-            change: t.change,
-            reason: t.reason,
-            date: t.timestamp
-          }))
-        }
+        recentTransactions: [], // Empty array since we've commented out the credit logs
+        creditsUsed: 0 // Default to 0 for now
       }
-    });
-
+    };
+    
+    // Log the response for debugging
+    console.log('Dashboard response data:', JSON.stringify(responseData, null, 2));
+    
+    // Release the client before sending response
+    client.release();
+    
+    // Send the complete response
+    return res.status(200).json(responseData);
   } catch (error) {
-    console.error('Error fetching dashboard data:', error);
-    res.status(500).json({
+    console.error('Error in getDashboardData:', error);
+    if (client) client.release();
+    return res.status(500).json({
       success: false,
       message: 'Error fetching dashboard data',
-      error: process.env.NODE_ENV === 'development' ? error.message : {}
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
