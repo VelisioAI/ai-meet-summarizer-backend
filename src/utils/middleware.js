@@ -69,7 +69,18 @@ const verifyToken = async (req, res, next) => {
     }
 
     // Attach user to request object
-    req.user = result.rows[0];
+    const user = result.rows[0];
+    req.user = user;
+    // For backward compatibility, also attach userId directly
+    req.user.userId = user.id;
+    
+    // Log for debugging
+    console.log('User attached to request:', { 
+      userId: user.id,
+      email: user.email,
+      hasUserId: !!req.user.userId 
+    });
+    
     next();
   } catch (error) {
     console.error('Token verification error:', error);

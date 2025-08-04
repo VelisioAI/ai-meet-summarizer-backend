@@ -4,7 +4,7 @@ const middleware = require('./utils/middleware')
 const creditsRouter = require('./routes/credit.routes')
 const summaryRouter = require('./routes/summary.routes')
 const usersRouter = require('./routes/user.routes')
-const paymentRouter = require('./routes/payment.routes')
+// const paymentRouter = require('./routes/payment.routes')
 const transcriptRouter = require('./routes/transcript.routes')
 const { connectDB } = require('./utils/config.js')
 const cors = require('cors');
@@ -18,7 +18,21 @@ try {
     logger.error('Database connection failed:', error);
 }
 
-app.use(cors());
+// Configure CORS with credentials support
+const corsOptions = {
+  origin: [
+    'http://localhost:3000', 
+    'https://your-production-domain.com',
+    'chrome-extension://nodaihhnmenjbdkfgkfmoklnpggikbgl'
+  ],
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+};
+app.use(cors(corsOptions));
+
+// Handle preflight requests
+app.options('*', cors(corsOptions));
 app.use(express.static('dist'))
 app.use(express.json({ limit: '10mb' })) // Increase payload size for transcripts
 app.use(middleware.requestLogger)
@@ -26,7 +40,7 @@ app.use(middleware.requestLogger)
 app.use('/api/user', usersRouter);
 app.use('/api/summary', summaryRouter);
 app.use('/api/credit-log', creditsRouter);
-app.use('/api/payment', paymentRouter);
+// app.use('/api/payment', paymentRouter);
 app.use('/api/transcript', transcriptRouter);
 
 app.use(middleware.unknownEndpoint)
