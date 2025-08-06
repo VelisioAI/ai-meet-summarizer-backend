@@ -20,11 +20,28 @@ try {
 
 // Configure CORS with credentials support
 const corsOptions = {
-  origin: [
-    'http://localhost:3000', 
-    'https://your-production-domain.com',
-    'chrome-extension://nodaihhnmenjbdkfgkfmoklnpggikbgl'
-  ],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'https://your-production-domain.com',
+      'https://meet.google.com'
+    ];
+    
+    // Allow any chrome-extension origin
+    if (origin.startsWith('chrome-extension://')) {
+      return callback(null, true);
+    }
+    
+    // Check if origin is in allowed list
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
