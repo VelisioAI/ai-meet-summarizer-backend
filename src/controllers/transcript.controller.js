@@ -1,6 +1,6 @@
 const { getClient } = require('../utils/config');
 const { getCreditBalance } = require('./credit.controller');
-const { generateSummary } = require('../services/openai.service');
+const { generateSummary } = require('../services/gemini.service');
 const logger = require('../utils/logger');
 
 const processTranscript = async (req, res) => {
