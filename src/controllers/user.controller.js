@@ -308,38 +308,40 @@ const getDashboardData = async (req, res) => {
 
     const user = userResult.rows[0];
 
-    // Get recent summaries
-    const summariesResult = await client.query(
-      `SELECT id, title, created_at 
-       FROM summaries 
-       WHERE user_id = $1 
-       ORDER BY created_at DESC 
-       LIMIT $2`,
-      [userId, summaryLimit]
-    );
+    // Get recent summaries and credit information in parallel
+    const [summariesResult, creditsResult, creditsUsedResult] = await Promise.all([
+      // Get recent summaries
+      client.query(
+        `SELECT id, title, created_at 
+         FROM summaries 
+         WHERE user_id = $1 
+         ORDER BY created_at DESC 
+         LIMIT $2`,
+        [userId, summaryLimit]
+      ),
+      // Get recent credit transactions
+      client.query(
+        `SELECT id, change, reason, timestamp 
+         FROM credit_logs 
+         WHERE user_id = $1 
+         ORDER BY timestamp DESC 
+         LIMIT 5`,
+        [userId]
+      ),
+      // Calculate total credits used (sum of negative changes)
+      client.query(
+        `SELECT COALESCE(SUM(CASE WHEN change < 0 THEN -change ELSE 0 END), 0) as total_used,
+                COALESCE(SUM(CASE WHEN change > 0 THEN change ELSE 0 END), 0) as total_earned
+         FROM credit_logs 
+         WHERE user_id = $1`,
+        [userId]
+      )
+    ]);
 
-    // Temporarily comment out credit logs queries
-    // const creditsResult = await client.query(
-    //   `SELECT change, reason, "timestamp" 
-    //    FROM credit_logs 
-    //    WHERE user_id = $1 
-    //    ORDER BY "timestamp" DESC 
-    //    LIMIT 5`,
-    //   [userId]
-    // );
+    // Prepare response data
+    const creditsUsed = parseFloat(creditsUsedResult.rows[0].total_used) || 0;
+    const creditsEarned = parseFloat(creditsUsedResult.rows[0].total_earned) || 0;
     
-    // console.log('Credit logs query result:', creditsResult.rows);
-
-    // // Calculate total credits used (sum of negative changes)
-    // const creditsUsedResult = await client.query(
-    //   `SELECT COALESCE(SUM(-change), 0) as total_used 
-    //    FROM credit_logs 
-    //    WHERE user_id = $1 AND change < 0`,
-    //   [userId]
-    // );
-    // console.log('Credits used result:', creditsUsedResult.rows[0]);
-
-    // Prepare response data without credit logs for now
     const responseData = {
       success: true,
       data: {
@@ -355,8 +357,20 @@ const getDashboardData = async (req, res) => {
           title: s.title,
           createdAt: s.created_at
         })),
-        recentTransactions: [], // Empty array since we've commented out the credit logs
-        creditsUsed: 0 // Default to 0 for now
+        creditInfo: {
+          currentBalance: user.credits,
+          totalUsed: creditsUsed,
+          totalEarned: creditsEarned,
+          // Calculate usage percentage as (totalUsed / (currentBalance + totalUsed)) * 100, capped at 100%
+          usagePercentage: (user.credits + creditsUsed) > 0 ?
+            Math.min(Math.round((creditsUsed / (user.credits + creditsUsed)) * 100), 100) : 0
+        },
+        recentTransactions: creditsResult.rows.map(t => ({
+          id: t.id,
+          amount: t.change,
+          reason: t.reason,
+          date: t.timestamp
+        }))
       }
     };
     
