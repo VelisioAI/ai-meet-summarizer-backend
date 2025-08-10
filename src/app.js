@@ -56,7 +56,7 @@ app.use(middleware.requestLogger)
 
 app.use('/api/user', usersRouter);
 app.use('/api/summary', summaryRouter);
-app.use('/api/credit-log', creditsRouter);
+app.use('/api/credits', creditsRouter);  
 // app.use('/api/payment', paymentRouter);
 app.use('/api/transcript', transcriptRouter);
 
