@@ -4,7 +4,7 @@ const middleware = require('./utils/middleware')
 const creditsRouter = require('./routes/credit.routes')
 const summaryRouter = require('./routes/summary.routes')
 const usersRouter = require('./routes/user.routes')
-// const paymentRouter = require('./routes/payment.routes')
+const paymentRouter = require('./routes/payment.routes') // Uncomment this
 const transcriptRouter = require('./routes/transcript.routes')
 const { connectDB } = require('./utils/config.js')
 const cors = require('cors');
@@ -21,7 +21,6 @@ try {
 // Configure CORS with credentials support
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
     const allowedOrigins = [
@@ -30,12 +29,10 @@ const corsOptions = {
       'https://meet.google.com'
     ];
     
-    // Allow any chrome-extension origin
     if (origin.startsWith('chrome-extension://')) {
       return callback(null, true);
     }
     
-    // Check if origin is in allowed list
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
@@ -46,18 +43,26 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
 };
+
 app.use(cors(corsOptions));
 
 // Handle preflight requests
 app.options('*', cors(corsOptions));
 app.use(express.static('dist'))
-app.use(express.json({ limit: '10mb' })) // Increase payload size for transcripts
+
+// Special middleware for Stripe webhook (raw body needed)
+app.use('/api/payment/webhook', express.raw({ type: 'application/json' }), (req, res, next) => {
+  req.rawBody = req.body;
+  next();
+});
+
+app.use(express.json({ limit: '10mb' }))
 app.use(middleware.requestLogger)
 
 app.use('/api/user', usersRouter);
 app.use('/api/summary', summaryRouter);
 app.use('/api/credits', creditsRouter);  
-// app.use('/api/payment', paymentRouter);
+app.use('/api/payment', paymentRouter); // Uncomment this
 app.use('/api/transcript', transcriptRouter);
 
 app.use(middleware.unknownEndpoint)
