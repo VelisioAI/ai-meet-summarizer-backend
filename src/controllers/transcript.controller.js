@@ -163,7 +163,11 @@ const processTranscript = async (req, res) => {
           summaryCredits,
           durationMinutes,
           totalCost
-        }
+        },
+        summaryStatus: should_summarize ? {
+          message: 'AI summary is being generated...',
+          estimatedTime: '30-60 seconds'
+        } : null
       }
     });
 
