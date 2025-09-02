@@ -6,7 +6,10 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "vercel-build": "echo \"Vercel build complete\"",
+    "vercel-dev": "node src/index.js",
+    "vercel-prod": "NODE_ENV=production node src/index.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.15.0",
