@@ -26,10 +26,13 @@ const printRoutes = (router, layer = '') => {
   console.log('\n=== END ROUTE DEBUG ===\n');
 };
 
-// Start the server
-const server = app.listen(config.PORT, () => {
-  logger.info(`Server running on port ${config.PORT}`);
-  printRoutes(app);
-});
+// Export the Express API for Vercel serverless functions
+module.exports = app;
 
-module.exports = server;
+// Only start the server if not in a serverless environment
+if (process.env.NODE_ENV !== 'production') {
+  const server = app.listen(config.PORT, () => {
+    logger.info(`Server running on port ${config.PORT}`);
+    printRoutes(app);
+  });
+}
