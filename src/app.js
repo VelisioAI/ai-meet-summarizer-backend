@@ -25,7 +25,7 @@ const corsOptions = {
     
     const allowedOrigins = [
       'http://localhost:3000',
-      'https://your-production-domain.com',
+      'https://summarifyai.vercel.app/',
       'https://meet.google.com'
     ];
     
